@@ -1,0 +1,47 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arrow = "*"
+async-trait = "0.1"
+bytes = { workspace = true }
+datafusion-common = "36.0.0"
+futures-util = { version = "0.3.30" }
+parquet = { version = "50", default-features = false }
+parking_lot = "0.12"
+prost = { workspace = true }
+prost-types = { workspace = true }
+regex = "1"
+tokio-tungstenite = "0.21"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+url = "2"
+
+[dependencies.proto_gen]
+path = "../proto_gen"
+features = ["control", "config"]
+
+[dependencies.datafusion]
+version = "36.0.0"
+features = [
+    "avro",
+    "crypto_expressions",
+    "encoding_expressions",
+    "parquet",
+    "regex_expressions",
+    "unicode_expressions",
+    "compression"
+]
+
+[dependencies.tokio]
+version = "1"
+features = [
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "parking_lot",
+    "signal"
+]
