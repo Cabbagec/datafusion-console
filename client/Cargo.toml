@@ -1,0 +1,40 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.72"
+resolver = "2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = "0.26.2"
+egui_extras = { version = "0.26.2" }
+log = "0.4"
+serde = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+lazy_static = "1.4.0"
+
+[dependencies.eframe]
+version = "0.26.2"
+default-features = false
+features = [
+    "default_fonts",
+    "glow",
+    "persistence",
+]
+
+# native
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.10.2"
+
+# web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.91"
+wasm-bindgen-futures = "0.4.41"
+
+[profile.release]
+opt-level = 2
+
+[profile.dev.package."*"]
+opt-level = 2
