@@ -1,7 +1,8 @@
 use eframe;
 use log::{debug, error, info};
+use wasm_bindgen_futures;
 
-mod connection;
+pub mod client;
 mod console_window;
 mod template;
 

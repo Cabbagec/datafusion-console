@@ -20,7 +20,7 @@ mod messages;
 mod server;
 
 pub async fn serve() -> Result<(), AppErrors> {
-    let bind = "0.0.0.0:8080";
+    let bind = "0.0.0.0:8081";
     let bind_socket = TcpListener::bind(bind)
         .await
         .map_err(|e| format!("failed to bind to {bind}"))?;

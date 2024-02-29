@@ -6,6 +6,9 @@ use lazy_static::lazy_static;
 use log::{error, info};
 use serde;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::spawn_local;
+
+use crate::client::Client;
 
 pub static default_server_addr: &'static str = "localhost:8080";
 
@@ -28,6 +31,7 @@ pub struct ConsoleApp {
     label: String,
     address: String,
     connected: bool,
+    // connection_handle:
 }
 
 impl Default for ConsoleApp {
@@ -58,7 +62,7 @@ impl eframe::App for ConsoleApp {
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     egui::widgets::global_dark_light_mode_switch(ui);
                     ui.separator();
-                    ui.label(RichText::new("Connect to").strong());
+                    ui.label(RichText::new("Server").strong());
 
                     let mut layout = LayoutJob::default();
                     layout.append(
@@ -90,18 +94,38 @@ impl eframe::App for ConsoleApp {
                         })
                         .ui(ui);
 
-                    if ui.button("connect").highlight().clicked() {
+                    let connect_btn_text = if self.connected {
+                        "Disconnect"
+                    } else {
+                        "Connect"
+                    };
+
+                    if ui.button(connect_btn_text).highlight().clicked() {
                         // connect
                         let addr = if !self.address.is_empty() {
                             self.address.clone()
                         } else {
                             if let Ok(r) = CURRENT_URL.try_read() {
-                                r.to_string()
+                                self.address = r.to_string();
+                                self.address.clone()
                             } else {
-                                default_server_addr.to_string()
+                                self.address = default_server_addr.to_string();
+                                self.address.clone()
                             }
                         };
-                        info!("try to connect to {addr}");
+                        let server_addr = addr.clone();
+
+                        // todo: connect/disconnect here
+                        self.connected = !self.connected;
+                        if self.connected {
+                            spawn_local(async move {
+                                let client = Client::new(format!("ws://{server_addr}"));
+                                let _ = client.connect().await;
+                            });
+                            info!("try to connect to {addr}");
+                        } else {
+                            info!("try to disconnect from {addr}");
+                        }
                     }
                 });
             });

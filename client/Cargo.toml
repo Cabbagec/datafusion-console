@@ -10,10 +10,13 @@ resolver = "2"
 [dependencies]
 egui = "0.26.2"
 egui_extras = { version = "0.26.2" }
+futures = "0.3.30"
+futures-util = "0.3.30"
 log = "0.4"
-serde = { workspace = true }
-tokio = { workspace = true, features = ["sync"] }
+serde = "1.0.197"
+tokio = { version = "1.36.0", features = ["sync"] }
 lazy_static = "1.4.0"
+gloo-net = { version = "0.5.0", features = ["websocket"] }
 
 [dependencies.eframe]
 version = "0.26.2"
@@ -23,6 +26,9 @@ features = [
     "glow",
     "persistence",
 ]
+
+[dependencies.proto_gen]
+path = "../proto_gen"
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
