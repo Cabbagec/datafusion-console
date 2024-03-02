@@ -1,36 +1,79 @@
+use std::rc::Rc;
+use std::time::Duration;
+
 use futures::select;
-use futures_util::stream::SplitStream;
-use futures_util::{FutureExt, SinkExt, StreamExt};
-use gloo_net::websocket::{futures::WebSocket, Message};
+use futures_util::{
+    FutureExt,
+    SinkExt, stream::{SplitSink, SplitStream}, StreamExt,
+};
+use gloo_net::websocket::{futures::WebSocket, Message as WsMessage};
+use gloo_timers::future::sleep;
 use log::{error, info};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use wasm_bindgen::__rt::WasmRefCell;
+
+use crate::rpc::RpcCaller;
+use crate::status::VolatileStatus;
 
 pub struct Client {
     url: String,
+    tx: Option<WasmRefCell<SplitSink<WebSocket, WsMessage>>>,
+    status: Rc<WasmRefCell<VolatileStatus>>,
+    rpc_callers: Vec<Rc<WasmRefCell<dyn RpcCaller>>>,
+    caller_tx: Sender<Vec<u8>>,
+    _caller_tx_rx: WasmRefCell<Receiver<Vec<u8>>>,
 }
 
 impl Client {
-    pub(crate) fn new(url: String) -> Self {
-        Self { url }
+    pub(crate) fn new(url: String, status: Rc<WasmRefCell<VolatileStatus>>) -> Self {
+        let (tx, rx) = channel::<Vec<u8>>(32);
+        Self {
+            url,
+            tx: None,
+            status,
+            rpc_callers: vec![],
+            caller_tx: tx,
+            _caller_tx_rx: WasmRefCell::new(rx),
+        }
     }
 
-    pub(crate) async fn connect(&self) -> Result<(), String> {
+    pub(crate) fn add_service(&mut self, caller: Rc<WasmRefCell<dyn RpcCaller>>) {
+        caller.borrow_mut().set_sender(self.caller_tx.clone());
+        self.rpc_callers.push(caller);
+    }
+
+    pub(crate) async fn connect(&mut self) -> Result<(), String> {
         let ws = WebSocket::open(&self.url).map_err(|e| {
             let msg = format!("failed to connect to {}: {e}", self.url);
             error!("{msg}");
             msg
         })?;
-        let (mut tx, mut rx) = ws.split();
+        let (tx, mut rx) = ws.split();
+        self.tx.replace(WasmRefCell::new(tx));
 
         // ws.close()
+        self.status.borrow_mut().connected = true;
         let _ = select! {
             r = self.handle(&mut rx).fuse() => r,
-            r = self.test_cancel().fuse() => r
+            r = self.wait_cancel().fuse() => r,
+            r = self.send_bytes().fuse() => r,
+            r = self.test_loop().fuse() => r
         };
-        // select! {}
+        info!("handle return!");
+        self.status.borrow_mut().connected = false;
         Ok(())
     }
-    async fn test_cancel(&self) -> Result<(), String> {
+
+    async fn wait_cancel(&self) -> Result<(), String> {
+        self.status.borrow().close_notify.notified().await;
         Ok(())
+    }
+
+    async fn test_loop(&self) -> Result<(), String> {
+        loop {
+            sleep(Duration::from_secs(1)).await;
+            info!("client loop running...");
+        }
     }
 
     async fn handle(&self, rx: &mut SplitStream<WebSocket>) -> Result<(), String> {
@@ -44,12 +87,34 @@ impl Client {
                 }
             };
             match m {
-                Message::Text(s) => {
-                    info!("received message, len: {s}");
+                WsMessage::Text(s) => {
+                    info!("received text: {s}");
                 }
-                Message::Bytes(b) => {
+                WsMessage::Bytes(b) => {
                     info!("received bytes, len: {}", b.len());
+                    let mut matched = false;
+                    for i in self.rpc_callers.iter() {
+                        matched |= i.borrow_mut().handle(&b);
+                        if matched {
+                            break;
+                        }
+                    }
+                    if !matched {
+                        error!("no rpc caller matched, ignoring msg...");
+                    }
                 }
+            }
+        }
+        Ok(())
+    }
+
+    async fn send_bytes(&self) -> Result<(), String> {
+        while let Some(s) = self._caller_tx_rx.borrow_mut().recv().await {
+            if let Some(tx) = self.tx.as_ref() {
+                tx.borrow_mut()
+                    .send(WsMessage::Bytes(s.to_vec()))
+                    .await
+                    .map_err(|e| format!("failed to send bytes: {e:?}, closing connection..."))?;
             }
         }
         Ok(())

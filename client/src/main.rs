@@ -4,6 +4,8 @@ use wasm_bindgen_futures;
 
 pub mod client;
 mod console_window;
+mod rpc;
+pub mod status;
 mod template;
 
 fn main() {

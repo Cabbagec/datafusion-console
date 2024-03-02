@@ -14,3 +14,9 @@ message HelloReply {
 //service HelloService {
 //  rpc SayHello(Hello) returns (HelloReply);
 //}
+message HelloService {
+  oneof service {
+    Hello helloMsg = 1;
+    HelloReply helloReplyMsg = 2;
+  }
+}
