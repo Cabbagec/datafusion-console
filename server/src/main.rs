@@ -12,7 +12,7 @@ use tracing::{debug, error, info};
 use tracing_subscriber::util::SubscriberInitExt;
 
 use errors::AppErrors;
-use server::echo_handler;
+use server::hello_service_handler;
 
 mod config;
 mod errors;
@@ -28,7 +28,7 @@ pub async fn serve() -> Result<(), AppErrors> {
     debug!("starting dashboard server on ws://{bind}");
     while let Ok((stream, _)) = bind_socket.accept().await {
         let (ws, endpoint) = handshake(stream).await?;
-        tokio::spawn(echo_handler(ws, endpoint));
+        tokio::spawn(hello_service_handler(ws, endpoint));
     }
     Ok(())
 }

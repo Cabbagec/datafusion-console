@@ -1,17 +1,16 @@
 use std::net::SocketAddr;
 
-use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use prost::Message as _;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
-use proto_gen::control::{Hello, HelloReply};
+use proto_gen::control::{Hello, hello_service::Service, HelloService};
 
 use crate::errors::AppErrors;
 
-pub(crate) async fn echo_handler(
+pub(crate) async fn hello_service_handler(
     mut stream: WebSocketStream<TcpStream>,
     client_addr: SocketAddr,
 ) -> Result<(), AppErrors> {
@@ -25,20 +24,24 @@ pub(crate) async fn echo_handler(
         .send(Message::binary(hello))
         .await
         .map_err(|e| format!("failed to send message, err: {e}"))?;
-    let rpl = stream
-        .next()
-        .await
-        .ok_or_else(|| "no hello reply message")?
-        .map_err(|e| format!("failed to receive hello reply message, err: {e}"))?;
-    let hello_reply = HelloReply::decode(Bytes::from(rpl.into_data()))
-        .map_err(|e| format!("failed to decode hello reply message, err: {e}"))?;
-    info!("hello reply: {:?}", hello_reply);
 
     while let Some(msg) = stream.next().await {
-        debug!("received message: {:?}", msg);
         if let Ok(msg) = msg {
             if msg.is_close() || msg.is_empty() || msg.is_ping() || msg.is_pong() {
                 break;
+            }
+            let hello_msg: HelloService = HelloService::decode(msg.into_data().as_slice())
+                .map_err(|e| format!("failed to decode msg as HelloService, decode err: {e:?}"))?;
+            let Some(e) = hello_msg.service else {
+                Err("no msg found")?
+            };
+            match e {
+                Service::HelloMsg(e) => {
+                    info!("hello msg recv: {e:?}");
+                }
+                Service::HelloReplyMsg(e) => {
+                    info!("hello reply recv: {e:?}");
+                }
             }
         } else {
             error!("failed to echo message, err: {msg:?}");
