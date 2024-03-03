@@ -1,9 +1,9 @@
-use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::RwLock;
 
 use eframe::{Frame, Storage, wasm_bindgen};
-use egui::{Color32, Context, RichText, text::LayoutJob, TextEdit, TextFormat, Widget};
+use egui::{Color32, Context, RichText, Stroke, text::LayoutJob, TextEdit, TextFormat, Widget};
+use egui_extras::{Size, StripBuilder};
 use lazy_static::lazy_static;
 use log::{error, info};
 use serde;
@@ -13,7 +13,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::client::Client;
 use crate::rpc::HelloRpc;
-use crate::status::VolatileStatus;
+use crate::status::{Mode, VolatileStatus};
 
 pub static default_server_addr: &'static str = "localhost:8080";
 
@@ -73,80 +73,165 @@ impl ConsoleApp {
 
 impl eframe::App for ConsoleApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                    egui::widgets::global_dark_light_mode_switch(ui);
-                    ui.separator();
-                    ui.label(RichText::new("Server").strong());
+        egui::TopBottomPanel::top("top_panel")
+            .default_height(36.0)
+            .show(ctx, |ui| {
+                egui::menu::bar(ui, |ui| {
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        egui::widgets::global_dark_light_mode_switch(ui);
+                        ui.separator();
+                        ui.label(RichText::new("Server").strong());
 
-                    let mut layout = LayoutJob::default();
-                    layout.append(
-                        "ws://",
-                        0.0,
-                        TextFormat {
-                            color: if ui.visuals().dark_mode {
-                                Color32::LIGHT_BLUE
-                            } else {
-                                Color32::DARK_BLUE
+                        let mut layout = LayoutJob::default();
+                        layout.append(
+                            "ws://",
+                            0.0,
+                            TextFormat {
+                                color: if ui.visuals().dark_mode {
+                                    Color32::LIGHT_BLUE
+                                } else {
+                                    Color32::DARK_BLUE
+                                },
+                                ..Default::default()
                             },
-                            ..Default::default()
-                        },
-                    );
-                    ui.label(layout);
+                        );
+                        ui.label(layout);
 
-                    TextEdit::singleline(&mut self.address)
-                        .char_limit(256)
-                        .desired_width(150.0)
-                        .text_color(if self.volatile_status.borrow().connected {
-                            Color32::LIGHT_GREEN
-                        } else {
-                            Color32::LIGHT_RED
-                        })
-                        .hint_text(if let Ok(r) = CURRENT_URL.try_read() {
-                            r.to_string()
-                        } else {
-                            default_server_addr.to_string()
-                        })
-                        .ui(ui);
+                        TextEdit::singleline(&mut self.address)
+                            .char_limit(256)
+                            .desired_width(150.0)
+                            .text_color(if self.volatile_status.borrow().connected {
+                                Color32::LIGHT_GREEN
+                            } else {
+                                Color32::LIGHT_RED
+                            })
+                            .hint_text(if let Ok(r) = CURRENT_URL.try_read() {
+                                r.to_string()
+                            } else {
+                                default_server_addr.to_string()
+                            })
+                            .ui(ui);
 
-                    let connect_btn_text = if self.volatile_status.borrow().connected {
-                        "Disconnect"
-                    } else {
-                        "Connect"
-                    };
-
-                    if ui.button(connect_btn_text).highlight().clicked() {
-                        // connect
-                        if !self.address.is_empty() {
-                        } else if let Ok(r) = CURRENT_URL.try_read() {
-                            self.address = r.to_string();
+                        let connect_btn_text = if self.volatile_status.borrow().connected {
+                            "Disconnect"
                         } else {
-                            self.address = default_server_addr.to_string();
+                            "Connect"
                         };
 
-                        // todo: connect/disconnect here
-                        if !self.volatile_status.borrow().connected {
-                            let status = self.volatile_status.clone();
-                            let addr = self.address.clone();
-                            let mut client = Client::new(format!("ws://{addr}"), status);
-                            client.add_service(self.hello_service.clone());
-                            spawn_local(async move {
-                                let _ = client.connect().await;
-                            });
-                            info!("try to connect to {}", self.address);
-                        } else {
-                            self.volatile_status.borrow().close_notify.notify_one();
-                            info!("try to disconnect from {}", self.address);
-                        }
-                    }
+                        if ui.button(connect_btn_text).highlight().clicked() {
+                            // connect
+                            if !self.address.is_empty() {
+                            } else if let Ok(r) = CURRENT_URL.try_read() {
+                                self.address = r.to_string();
+                            } else {
+                                self.address = default_server_addr.to_string();
+                            };
+
+                            // todo: connect/disconnect here
+                            if !self.volatile_status.borrow().connected {
+                                let status = self.volatile_status.clone();
+                                let addr = self.address.clone();
+                                let mut client = Client::new(format!("ws://{addr}"), status);
+                                client.add_service(self.hello_service.clone());
+                                spawn_local(async move {
+                                    let _ = client.connect().await;
+                                });
+                                info!("try to connect to {}", self.address);
+                            } else {
+                                self.volatile_status.borrow().close_notify.notify_one();
+                                info!("try to disconnect from {}", self.address);
+                            }
+                        };
+                        ui.separator();
+                        ui.label("Select Mode: ");
+                        let s_ref = self.volatile_status.borrow();
+                        let mode_mut = &mut *(s_ref.mode.borrow_mut());
+                        ui.add_enabled_ui(s_ref.connected, |ui| {
+                            ui.selectable_value(mode_mut, Mode::Console, "Console")
+                                .highlight();
+                            ui.selectable_value(mode_mut, Mode::Monitor, "Monitor")
+                                .highlight();
+                        });
+                    });
                 });
             });
-        });
         egui::CentralPanel::default().show(ctx, |ui| {
-            if ui.button("Hello").clicked() {
-                self.hello_service.borrow().say_hello()
-            }
+            // ui.visuals_mut().clip_rect_margin += 100.0;
+            // let b = StripBuilder::new(ui).size()
+
+            ui.add_enabled_ui(self.volatile_status.borrow().connected, |ui| {
+                StripBuilder::new(ui)
+                    .size(Size::remainder().at_least(720.0))
+                    .vertical(|mut strip_v| {
+                        strip_v.strip(|cols_builder| {
+                            cols_builder
+                                .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
+                                .size(Size::relative(0.6).at_least(640.0).at_most(640.0))
+                                .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
+                                .horizontal(|mut col| {
+                                    // left col
+                                    col.cell(|ui| {
+                                        ui.painter().rect_stroke(
+                                            ui.available_rect_before_wrap(),
+                                            3.0,
+                                            Stroke::new(
+                                                0.8,
+                                                if ui.visuals().dark_mode {
+                                                    Color32::LIGHT_GRAY
+                                                } else {
+                                                    Color32::GRAY
+                                                },
+                                            ),
+                                        );
+                                        ui.separator();
+                                        ui.vertical_centered(|ui| {
+                                            ui.label("DataFusion Runtime Context")
+                                        });
+
+                                        // egui::Grid::new("menu_grid")
+                                        //     .num_columns(1)
+                                        //     .striped(true)
+                                        //     .show(ui, |ui| {
+                                        //         ui.horizontal_wrapped(|ui| {
+                                        //             ui.selectable_value(
+                                        //                 mode_mut,
+                                        //                 Mode::Console,
+                                        //                 "Console",
+                                        //             )
+                                        //             .highlight();
+                                        //             ui.selectable_value(
+                                        //                 mode_mut,
+                                        //                 Mode::Monitor,
+                                        //                 "Monitor",
+                                        //             )
+                                        //             .highlight();
+                                        //         });
+                                        //     });
+                                        ui.separator();
+                                    });
+                                    // center col
+                                    col.cell(|ui| {
+                                        ui.horizontal_top(|ui| {
+                                            if ui.button("Hello").clicked() {
+                                                self.hello_service.borrow().say_hello();
+                                                info!("click!");
+                                            }
+                                            ui.label("right");
+                                        });
+                                    });
+                                    // right col
+                                    col.cell(|ui| {
+                                        ui.painter().rect_filled(
+                                            ui.available_rect_before_wrap(),
+                                            0.0,
+                                            Color32::LIGHT_YELLOW,
+                                        );
+                                        ui.label("right");
+                                    });
+                                });
+                        });
+                    });
+            });
         });
     }
 
