@@ -2,26 +2,26 @@ use std::rc::Rc;
 use std::sync::RwLock;
 
 use eframe::{Frame, Storage, wasm_bindgen};
-use egui::{Color32, Context, RichText, Stroke, text::LayoutJob, TextEdit, TextFormat, Widget};
+use egui::{
+    Button, Color32, Context, Response as EguiResponse, RichText, Stroke, text::LayoutJob,
+    TextEdit, TextFormat, Ui, Vec2, Widget,
+};
 use egui_extras::{Size, StripBuilder};
 use lazy_static::lazy_static;
 use log::{error, info};
 use serde;
 use wasm_bindgen::__rt::WasmRefCell;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::client::Client;
+use crate::custom_widgets;
 use crate::rpc::HelloRpc;
 use crate::status::{Mode, VolatileStatus};
-
-pub static default_server_addr: &'static str = "localhost:8080";
 
 lazy_static! {
     static ref CURRENT_URL: RwLock<String> = RwLock::new("".to_string());
 }
 
-#[wasm_bindgen]
 pub fn set_current_url(url: String) {
     if let Ok(mut current_url) = CURRENT_URL.try_write() {
         *current_url = url;
@@ -108,7 +108,7 @@ impl eframe::App for ConsoleApp {
                             .hint_text(if let Ok(r) = CURRENT_URL.try_read() {
                                 r.to_string()
                             } else {
-                                default_server_addr.to_string()
+                                "".to_string()
                             })
                             .ui(ui);
 
@@ -124,7 +124,7 @@ impl eframe::App for ConsoleApp {
                             } else if let Ok(r) = CURRENT_URL.try_read() {
                                 self.address = r.to_string();
                             } else {
-                                self.address = default_server_addr.to_string();
+                                self.address = "".to_string();
                             };
 
                             // todo: connect/disconnect here
@@ -156,81 +156,188 @@ impl eframe::App for ConsoleApp {
                 });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
-            // ui.visuals_mut().clip_rect_margin += 100.0;
-            // let b = StripBuilder::new(ui).size()
+            // ui.add_enabled_ui(self.volatile_status.borrow().connected, |ui| {
+            ui.add_enabled_ui(true, |ui| {
+                egui::SidePanel::left("menu_panel")
+                    // .resizable(false)
+                    .show_inside(ui, |ui| {
+                        ui.label(RichText::new("Server Controls").heading());
+                        ui.vertical_centered_justified(|ui| {
+                            egui::Grid::new("rt_control_grid")
+                                .num_columns(2)
+                                .min_col_width(12.0)
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    ui.add(egui::Label::new("pause server yieldings control"));
+                                    ui.add(custom_widgets::toggle_ui::toggle_switch(
+                                        &mut self
+                                            .volatile_status
+                                            .borrow()
+                                            .pause_server_yields
+                                            .borrow_mut(),
+                                    ));
+                                    ui.end_row();
 
-            ui.add_enabled_ui(self.volatile_status.borrow().connected, |ui| {
-                StripBuilder::new(ui)
-                    .size(Size::remainder().at_least(720.0))
-                    .vertical(|mut strip_v| {
-                        strip_v.strip(|cols_builder| {
-                            cols_builder
-                                .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
-                                .size(Size::relative(0.6).at_least(640.0).at_most(640.0))
-                                .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
-                                .horizontal(|mut col| {
-                                    // left col
-                                    col.cell(|ui| {
-                                        ui.painter().rect_stroke(
-                                            ui.available_rect_before_wrap(),
-                                            3.0,
-                                            Stroke::new(
-                                                0.8,
-                                                if ui.visuals().dark_mode {
-                                                    Color32::LIGHT_GRAY
-                                                } else {
-                                                    Color32::GRAY
-                                                },
-                                            ),
-                                        );
-                                        ui.separator();
-                                        ui.vertical_centered(|ui| {
-                                            ui.label("DataFusion Runtime Context")
-                                        });
+                                    ui.label("2");
+                                    custom_widgets::toggle_ui::toggle_ui(
+                                        ui,
+                                        &mut self
+                                            .volatile_status
+                                            .borrow()
+                                            .pause_server_yields
+                                            .borrow_mut(),
+                                    );
+                                    ui.end_row();
 
-                                        // egui::Grid::new("menu_grid")
-                                        //     .num_columns(1)
-                                        //     .striped(true)
-                                        //     .show(ui, |ui| {
-                                        //         ui.horizontal_wrapped(|ui| {
-                                        //             ui.selectable_value(
-                                        //                 mode_mut,
-                                        //                 Mode::Console,
-                                        //                 "Console",
-                                        //             )
-                                        //             .highlight();
-                                        //             ui.selectable_value(
-                                        //                 mode_mut,
-                                        //                 Mode::Monitor,
-                                        //                 "Monitor",
-                                        //             )
-                                        //             .highlight();
-                                        //         });
-                                        //     });
-                                        ui.separator();
-                                    });
-                                    // center col
-                                    col.cell(|ui| {
-                                        ui.horizontal_top(|ui| {
-                                            if ui.button("Hello").clicked() {
-                                                self.hello_service.borrow().say_hello();
-                                                info!("click!");
-                                            }
-                                            ui.label("right");
-                                        });
-                                    });
-                                    // right col
-                                    col.cell(|ui| {
-                                        ui.painter().rect_filled(
-                                            ui.available_rect_before_wrap(),
-                                            0.0,
-                                            Color32::LIGHT_YELLOW,
-                                        );
-                                        ui.label("right");
-                                    });
+                                    ui.label("3");
+                                    custom_widgets::toggle_ui::toggle_ui(
+                                        ui,
+                                        &mut self
+                                            .volatile_status
+                                            .borrow()
+                                            .pause_server_yields
+                                            .borrow_mut(),
+                                    );
+                                    ui.end_row();
                                 });
                         });
                     });
+                egui::SidePanel::right("status_panel")
+                    .resizable(false)
+                    .min_width(80.0)
+                    .show_inside(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.heading("Status");
+                        });
+                    });
+                egui::CentralPanel::default().show_inside(ui, |ui| {
+                    StripBuilder::new(ui)
+                        .size(Size::relative(0.1))
+                        .size(Size::relative(0.8).at_least(640.0))
+                        .size(Size::relative(0.1))
+                        .horizontal(|mut strip_v| {
+                            strip_v.cell(|ui| {
+                                ui.painter().rect_stroke(
+                                    ui.available_rect_before_wrap(),
+                                    0.0,
+                                    Stroke::new(1.0, Color32::LIGHT_BLUE),
+                                );
+                            });
+                            strip_v.strip(|rows_builder| {
+                                rows_builder
+                                    // .size(Size::relative(0.9).at_least(480.0).at_most(640.0))
+                                    // .size(Size::relative(0.1).at_least(12.0).at_most(24.0))
+                                    .size(Size::relative(0.9).at_least(540.0))
+                                    .size(Size::relative(0.1).at_most(30.0))
+                                    .vertical(|mut strip| {
+                                        strip.cell(|ui| {
+                                            ui.painter().rect_stroke(
+                                                ui.available_rect_before_wrap(),
+                                                0.0,
+                                                Stroke::new(1.0, Color32::LIGHT_BLUE),
+                                            );
+                                            egui::ScrollArea::vertical()
+                                                .enable_scrolling(true)
+                                                .hscroll(true)
+                                                .stick_to_bottom(true)
+                                                .show(ui, |ui| {
+                                                    ui.label(
+                                                        RichText::new("hello").color(Color32::RED),
+                                                    );
+                                                    ui.label(
+                                                        RichText::new("world").color(Color32::BLUE),
+                                                    );
+                                                });
+                                        });
+                                        strip.strip(|strip_h| {
+                                            strip_h
+                                                .size(Size::relative(0.8))
+                                                .size(Size::relative(0.1))
+                                                .size(Size::relative(0.1))
+                                                .horizontal(|mut strip| {
+                                                    strip.cell(|_| {});
+                                                    strip.cell(|ui| {
+                                                        let size =
+                                                            ui.available_rect_before_wrap().size();
+
+                                                        ui.add_sized(
+                                                            size,
+                                                            move |ui: &mut Ui| -> EguiResponse {
+                                                                let r = Button::new("hello")
+                                                                    .rounding(5.0)
+                                                                    .ui(ui);
+                                                                if r.clicked() {
+                                                                    self.hello_service
+                                                                        .borrow()
+                                                                        .say_hello();
+                                                                    info!("saying hello");
+                                                                };
+                                                                r
+                                                            },
+                                                        );
+                                                    });
+                                                    strip.cell(|ui| {
+                                                        ui.label("right");
+                                                    });
+                                                });
+                                        });
+                                    });
+                            });
+                            strip_v.cell(|ui| {
+                                ui.painter().rect_stroke(
+                                    ui.available_rect_before_wrap(),
+                                    0.0,
+                                    Stroke::new(1.0, Color32::LIGHT_BLUE),
+                                );
+                            });
+                        });
+                });
+                // egui::SidePanel::right("status_panel").show_inside(ui, |ui| {
+                //     ui.vertical_centered(|ui| {
+                //         ui.label("right");
+                //     });
+                // });
+                // StripBuilder::new(ui)
+                //     .size(Size::remainder().at_least(720.0))
+                //     .vertical(|mut strip_v| {
+                //         strip_v.strip(|cols_builder| {
+                //             cols_builder
+                //                 .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
+                //                 .size(Size::relative(0.6).at_least(640.0).at_most(640.0))
+                //                 .size(Size::relative(0.2).at_least(200.0).at_most(240.0))
+                //                 .horizontal(|mut col| {
+                //                     // left col
+                //                     col.cell(|ui| {
+
+                // egui::Grid::new("menu_grid")
+                //     .num_columns(1)
+                //     .striped(true)
+                //     .show(ui, |ui| {
+                //         ui.horizontal_wrapped(|ui| {
+                //             ui.selectable_value(
+                //                 mode_mut,
+                //                 Mode::Console,
+                //                 "Console",
+                //             )
+                //             .highlight();
+                //             ui.selectable_value(
+                //                 mode_mut,
+                //                 Mode::Monitor,
+                //                 "Monitor",
+                //             )
+                //             .highlight();
+                //         });
+                //     });
+                //                 });
+                //                 // center col
+                //                 col.cell(|ui| {
+                //                 });
+                //                 // right col
+                //                 col.cell(|ui| {
+                //                 });
+                //             });
+                //     });
+                // });
             });
         });
     }

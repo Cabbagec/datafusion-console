@@ -3,4 +3,11 @@ syntax = "proto3";
 package config;
 
 message Config {
+  bool pause_monitor = 1;
+}
+
+message ConfigService {
+  oneof service {
+    Config configMsg = 1;
+  }
 }

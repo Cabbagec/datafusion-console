@@ -1,9 +1,13 @@
 use eframe;
 use log::{debug, error, info};
 use wasm_bindgen_futures;
+use web_sys;
+
+use crate::console_window::set_current_url;
 
 pub mod client;
 mod console_window;
+mod custom_widgets;
 mod rpc;
 pub mod status;
 mod template;
@@ -27,5 +31,7 @@ fn main() {
             .expect("failed to start template");
         info!("runner");
     });
-    info!("spawning done!")
+    info!("spawning done!");
+    let w = web_sys::window().expect("failed to find window");
+    set_current_url(w.location().host().expect("failed to get host"));
 }

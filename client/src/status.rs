@@ -3,8 +3,10 @@ use wasm_bindgen::__rt::WasmRefCell;
 
 pub struct VolatileStatus {
     pub close_notify: Notify,
-    pub mode: WasmRefCell<Mode>,
     pub connected: bool,
+    pub mode: WasmRefCell<Mode>,
+    // server
+    pub pause_server_yields: WasmRefCell<bool>,
 }
 
 #[derive(PartialEq)]
@@ -19,6 +21,7 @@ impl Default for VolatileStatus {
             close_notify: Notify::new(),
             connected: false,
             mode: WasmRefCell::new(Mode::Console),
+            pause_server_yields: WasmRefCell::new(false),
         }
     }
 }
