@@ -3,13 +3,13 @@ use log::{debug, error, info};
 use wasm_bindgen_futures;
 use web_sys;
 
-use crate::console_window::set_current_url;
+use crate::console_window::set_current_host;
 
 pub mod client;
 mod console_window;
 mod custom_widgets;
 mod rpc;
-pub mod status;
+mod status;
 mod template;
 
 fn main() {
@@ -33,5 +33,7 @@ fn main() {
     });
     info!("spawning done!");
     let w = web_sys::window().expect("failed to find window");
-    set_current_url(w.location().host().expect("failed to get host"));
+    wasm_bindgen_futures::spawn_local(set_current_host(
+        w.location().host().expect("failed to get host"),
+    ));
 }
