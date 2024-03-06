@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
-use wasm_bindgen::__rt::WasmRefCell;
-
+use crate::{Ref, RefCell};
 use crate::rpc::HelloRpc;
 use crate::status::VolatileStatus;
 
@@ -11,17 +10,17 @@ pub struct ConsoleApp {
     address: String,
     // connection_handle:
     #[serde(skip, default = "default_status")]
-    volatile_status: Rc<WasmRefCell<VolatileStatus>>,
+    volatile_status: Rc<RefCell<VolatileStatus>>,
     #[serde(skip, default = "default_hello_service")]
-    hello_service: Rc<WasmRefCell<HelloRpc>>,
+    hello_service: Rc<RefCell<HelloRpc>>,
 }
 
-fn default_status() -> Rc<WasmRefCell<VolatileStatus>> {
-    Rc::new(WasmRefCell::new(VolatileStatus::default()))
+fn default_status() -> Rc<RefCell<VolatileStatus>> {
+    Rc::new(RefCell::new(VolatileStatus::default()))
 }
 
-fn default_hello_service() -> Rc<WasmRefCell<HelloRpc>> {
-    Rc::new(WasmRefCell::new(HelloRpc::default()))
+fn default_hello_service() -> Rc<RefCell<HelloRpc>> {
+    Rc::new(RefCell::new(HelloRpc::default()))
 }
 
 impl Default for ConsoleApp {
@@ -36,11 +35,11 @@ impl Default for ConsoleApp {
 }
 
 impl ConsoleApp {
-    pub fn get_hello_service(&self) -> wasm_bindgen::__rt::Ref<HelloRpc> {
+    pub fn get_hello_service(&self) -> Ref<HelloRpc> {
         self.hello_service.borrow()
     }
 
-    pub fn clone_hello_service_rc(&self) -> Rc<WasmRefCell<HelloRpc>> {
+    pub fn clone_hello_service_rc(&self) -> Rc<RefCell<HelloRpc>> {
         self.hello_service.clone()
     }
 }
@@ -62,11 +61,11 @@ impl ConsoleApp {
         }
     }
 
-    pub fn get_status(&self) -> wasm_bindgen::__rt::Ref<VolatileStatus> {
+    pub fn get_status(&self) -> Ref<VolatileStatus> {
         self.volatile_status.borrow()
     }
 
-    pub fn clone_status_rc(&self) -> Rc<WasmRefCell<VolatileStatus>> {
+    pub fn clone_status_rc(&self) -> Rc<RefCell<VolatileStatus>> {
         self.volatile_status.clone()
     }
 

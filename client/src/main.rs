@@ -1,7 +1,9 @@
+pub use std::cell::{Ref, RefCell};
+
 use eframe;
-use log::{debug, error, info};
-use wasm_bindgen_futures;
-use web_sys;
+use log::info;
+// pub use wasm_bindgen::__rt::{Ref, WasmRefCell as RefCell};
+pub use wasm_bindgen_futures::spawn_local;
 
 use crate::console_window::set_current_host;
 
@@ -17,7 +19,7 @@ fn main() {
     info!("starting...");
 
     let web_options = eframe::WebOptions::default();
-    wasm_bindgen_futures::spawn_local(async {
+    spawn_local(async {
         eframe::WebRunner::new()
             .start(
                 "the_canvas_id",
@@ -32,8 +34,11 @@ fn main() {
         info!("runner");
     });
     info!("spawning done!");
-    let w = web_sys::window().expect("failed to find window");
-    wasm_bindgen_futures::spawn_local(set_current_host(
-        w.location().host().expect("failed to get host"),
+    spawn_local(set_current_host(
+        web_sys::window()
+            .expect("failed to find window")
+            .location()
+            .host()
+            .expect("failed to get host"),
     ));
 }

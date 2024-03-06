@@ -1,12 +1,13 @@
 use tokio::sync::Notify;
-use wasm_bindgen::__rt::WasmRefCell;
+
+use crate::RefCell;
 
 pub struct VolatileStatus {
     pub close_notify: Notify,
     pub connected: bool,
-    pub mode: WasmRefCell<Mode>,
+    pub mode: RefCell<Mode>,
     // server
-    pub pause_server_yields: WasmRefCell<bool>,
+    pub pause_server_yields: RefCell<bool>,
 }
 
 #[derive(PartialEq)]
@@ -20,8 +21,8 @@ impl Default for VolatileStatus {
         Self {
             close_notify: Notify::new(),
             connected: false,
-            mode: WasmRefCell::new(Mode::Console),
-            pause_server_yields: WasmRefCell::new(false),
+            mode: RefCell::new(Mode::Console),
+            pause_server_yields: RefCell::new(false),
         }
     }
 }

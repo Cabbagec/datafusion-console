@@ -1,4 +1,4 @@
-use egui::{Button, Color32, Response as EguiResponse, RichText, Stroke, Ui, Widget};
+use egui::{Button, Color32, RichText, Ui};
 use egui_extras::{Size, StripBuilder};
 use log::info;
 
@@ -27,6 +27,7 @@ impl ConsoleApp {
                             .size(Size::relative(0.1).at_most(30.0))
                             .vertical(|mut strip| {
                                 strip.cell(|ui| {
+                                    self.draw_content_scroll_area(ui);
                                     // ui.painter().rect_stroke(
                                     //     ui.available_rect_before_wrap(),
                                     //     0.0,
@@ -52,19 +53,16 @@ impl ConsoleApp {
                                             strip.cell(|ui| {
                                                 let size = ui.available_rect_before_wrap().size();
 
-                                                ui.add_sized(
-                                                    size,
-                                                    move |ui: &mut Ui| -> EguiResponse {
-                                                        let r = Button::new("hello")
-                                                            .rounding(5.0)
-                                                            .ui(ui);
-                                                        if r.clicked() {
-                                                            self.get_hello_service().say_hello();
-                                                            info!("saying hello");
-                                                        };
-                                                        r
-                                                    },
-                                                );
+                                                if ui
+                                                    .add_sized(
+                                                        ui.available_size_before_wrap(),
+                                                        Button::new("hello").rounding(5.0),
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    self.get_hello_service().say_hello();
+                                                    info!("saying hello");
+                                                };
                                             });
                                             strip.cell(|ui| {
                                                 ui.label("right");

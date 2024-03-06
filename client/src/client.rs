@@ -10,22 +10,22 @@ use gloo_net::websocket::{futures::WebSocket, Message as WsMessage};
 use gloo_timers::future::sleep;
 use log::{error, info};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use wasm_bindgen::__rt::WasmRefCell;
 
+use crate::RefCell;
 use crate::rpc::RpcCaller;
 use crate::status::VolatileStatus;
 
 pub struct Client {
     url: String,
-    tx: Option<WasmRefCell<SplitSink<WebSocket, WsMessage>>>,
-    status: Rc<WasmRefCell<VolatileStatus>>,
-    rpc_callers: Vec<Rc<WasmRefCell<dyn RpcCaller>>>,
+    tx: Option<RefCell<SplitSink<WebSocket, WsMessage>>>,
+    status: Rc<RefCell<VolatileStatus>>,
+    rpc_callers: Vec<Rc<RefCell<dyn RpcCaller>>>,
     caller_tx: Sender<Vec<u8>>,
-    _caller_tx_rx: WasmRefCell<Receiver<Vec<u8>>>,
+    _caller_tx_rx: RefCell<Receiver<Vec<u8>>>,
 }
 
 impl Client {
-    pub(crate) fn new(url: String, status: Rc<WasmRefCell<VolatileStatus>>) -> Self {
+    pub(crate) fn new(url: String, status: Rc<RefCell<VolatileStatus>>) -> Self {
         let (tx, rx) = channel::<Vec<u8>>(32);
         Self {
             url,
@@ -33,11 +33,11 @@ impl Client {
             status,
             rpc_callers: vec![],
             caller_tx: tx,
-            _caller_tx_rx: WasmRefCell::new(rx),
+            _caller_tx_rx: RefCell::new(rx),
         }
     }
 
-    pub(crate) fn add_service(&mut self, caller: Rc<WasmRefCell<dyn RpcCaller>>) {
+    pub(crate) fn add_service(&mut self, caller: Rc<RefCell<dyn RpcCaller>>) {
         caller.borrow_mut().set_sender(self.caller_tx.clone());
         self.rpc_callers.push(caller);
     }
@@ -49,7 +49,7 @@ impl Client {
             msg
         })?;
         let (tx, mut rx) = ws.split();
-        self.tx.replace(WasmRefCell::new(tx));
+        self.tx.replace(RefCell::new(tx));
 
         // ws.close()
         self.status.borrow_mut().connected = true;

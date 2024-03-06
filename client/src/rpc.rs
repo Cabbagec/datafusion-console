@@ -3,10 +3,10 @@ use std::rc::Rc;
 use log::error;
 use prost::Message;
 use tokio::sync::mpsc::Sender;
-use wasm_bindgen::__rt::WasmRefCell;
-use wasm_bindgen_futures::spawn_local;
 
 use proto_gen::control::{hello_service::Service, HelloReply, HelloService};
+
+use crate::{spawn_local, RefCell};
 
 pub trait RpcCaller {
     // fn add_client(&self, client: &Client);
@@ -16,7 +16,7 @@ pub trait RpcCaller {
 
 #[derive(Default)]
 pub struct HelloRpc {
-    sender: Option<Rc<WasmRefCell<Sender<Vec<u8>>>>>,
+    sender: Option<Rc<RefCell<Sender<Vec<u8>>>>>,
 }
 
 impl HelloRpc {
@@ -45,7 +45,7 @@ impl HelloRpc {
 
 impl RpcCaller for HelloRpc {
     fn set_sender(&mut self, sender: Sender<Vec<u8>>) {
-        self.sender.replace(Rc::new(WasmRefCell::new(sender)));
+        self.sender.replace(Rc::new(RefCell::new(sender)));
     }
 
     fn handle(&mut self, bytes: &[u8]) -> bool {

@@ -1,6 +1,7 @@
 use egui::{Color32, RichText, TextEdit, Widget};
 use log::info;
-use wasm_bindgen_futures::spawn_local;
+
+use crate::spawn_local;
 
 use super::{Client, ConsoleApp, get_current_host, Mode};
 
