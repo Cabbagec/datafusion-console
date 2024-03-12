@@ -2,11 +2,20 @@ use egui::RichText;
 use log::info;
 
 use crate::custom_widgets;
+use crate::status::Mode;
 
 use super::ConsoleApp;
 
 impl ConsoleApp {
-    pub fn draw_side_panels_in_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn draw_side_panels_on_mode(&mut self, ui: &mut egui::Ui) {
+        let current_mode = self.get_status().mode.borrow().clone();
+        match current_mode {
+            Mode::Console => self.draw_side_panels_in_ui(ui),
+            Mode::Monitor => {}
+        }
+    }
+
+    fn draw_side_panels_in_ui(&mut self, ui: &mut egui::Ui) {
         egui::SidePanel::left("menu_panel")
             .resizable(false)
             .max_width(180.0)
@@ -42,7 +51,7 @@ impl ConsoleApp {
                         let mut current_mut = status.current_context_name.borrow_mut();
 
                         // list content is selected, set it as current
-                        if r.changed() && ctxes.contains(&edit) {
+                        if r.changed() && ctxes.contains(&*edit) {
                             info!("changed, edit: {edit}");
                             current_mut.replace(edit.clone());
                         }
@@ -58,21 +67,24 @@ impl ConsoleApp {
                             .add_sized([size.x / 6.0, size.y], egui::Button::new("+"))
                             .clicked()
                             || (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))))
-                            && !ctxes.contains(&edit)
+                            && !ctxes.contains(&*edit)
                         {
                             if edit.is_empty() {
                                 *edit = "Default".to_string();
                             }
                             let new_ctx = edit.clone();
-                            ctxes.push(new_ctx.clone());
-                            current_mut.replace(new_ctx.clone());
-                            info!("add new ctx: {new_ctx}");
+                            if ctxes.insert(new_ctx.clone()) {
+                                info!("insert new ctx: {new_ctx}");
+                                current_mut.replace(new_ctx.clone());
+                            } else {
+                                info!("already have ctx: {new_ctx}");
+                            };
                         };
 
                         // leave edit, restore edit content with current context
-                        if r.lost_focus() && !ctxes.contains(&edit) {
+                        if r.lost_focus() && !ctxes.contains(&*edit) {
                             info!("lost focus, set edit to: {current_mut:?}");
-                            *edit = current_mut.clone().unwrap();
+                            *edit = current_mut.clone().unwrap_or_default();
                             info!("edit ctx: {edit}");
                         }
                     });

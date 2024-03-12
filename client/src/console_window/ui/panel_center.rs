@@ -2,10 +2,20 @@ use egui::{Button, Color32, RichText, Ui};
 use egui_extras::{Size, StripBuilder};
 use log::info;
 
+use crate::status::Mode;
+
 use super::ConsoleApp;
 
 impl ConsoleApp {
-    pub fn draw_center_panels_in_ui(&mut self, ui: &mut Ui) {
+    pub fn draw_center_panel_on_mode_in_ui(&mut self, ui: &mut Ui) {
+        let current_mode = self.get_status().mode.borrow().clone();
+        match current_mode {
+            Mode::Console => self.draw_console_in_ui(ui),
+            Mode::Monitor => {}
+        }
+    }
+
+    fn draw_console_in_ui(&mut self, ui: &mut Ui) {
         egui::CentralPanel::default().show_inside(ui, |ui| {
             StripBuilder::new(ui)
                 .size(Size::relative(0.1))
@@ -91,8 +101,8 @@ impl ConsoleApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.painter()
                 .rect_filled(ui.available_rect_before_wrap(), 0.0, area_color);
-            ui.label(RichText::new("hello").color(Color32::RED));
-            ui.label(RichText::new("world").color(Color32::BLUE));
+            // ui.label(RichText::new("hello").color(Color32::RED));
+            // ui.label(RichText::new("world").color(Color32::BLUE));
         });
     }
 }

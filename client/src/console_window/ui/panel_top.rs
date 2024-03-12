@@ -21,17 +21,30 @@ impl ConsoleApp {
                         } else {
                             (Color32::LIGHT_RED, "Connect")
                         };
-                        let scheme_color = if ui.visuals().dark_mode {
-                            Color32::LIGHT_BLUE
-                        } else {
-                            Color32::DARK_BLUE
-                        };
+                        // let scheme_color = if ui.visuals().dark_mode {
+                        //     Color32::LIGHT_BLUE
+                        // } else {
+                        //     Color32::DARK_BLUE
+                        // };
                         let current_host = get_current_host();
 
                         egui::widgets::global_dark_light_mode_switch(ui);
                         ui.separator();
-                        ui.label(RichText::new("Server").strong());
-                        ui.label(RichText::new("ws://").color(scheme_color));
+                        ui.label(RichText::new("Client mode:").strong());
+                        {
+                            let s_ref = self.get_status();
+                            let mode_mut = &mut *(s_ref.mode.borrow_mut());
+                            egui::ComboBox::from_id_source("mode")
+                                .width(24.0)
+                                .selected_text(mode_mut.to_string())
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(mode_mut, Mode::Console, "Console");
+                                    ui.selectable_value(mode_mut, Mode::Monitor, "Monitor");
+                                });
+                        }
+
+                        ui.separator();
+                        ui.label("Address: ");
                         TextEdit::singleline(self.get_addr_mut())
                             .char_limit(256)
                             .desired_width(150.0)
@@ -61,16 +74,16 @@ impl ConsoleApp {
                             }
                         };
 
-                        ui.separator();
-                        ui.label("Select Mode: ");
-                        let s_ref = self.get_status();
-                        let mode_mut = &mut *(s_ref.mode.borrow_mut());
-                        ui.add_enabled_ui(s_ref.connected, |ui| {
-                            ui.selectable_value(mode_mut, Mode::Console, "Console")
-                                .highlight();
-                            ui.selectable_value(mode_mut, Mode::Monitor, "Monitor")
-                                .highlight();
-                        });
+                        // ui.separator();
+                        // ui.label("Select Mode: ");
+                        // let s_ref = self.get_status();
+                        // let mode_mut = &mut *(s_ref.mode.borrow_mut());
+                        // ui.add_enabled_ui(s_ref.connected, |ui| {
+                        //     ui.selectable_value(mode_mut, Mode::Console, "Console")
+                        //         .highlight();
+                        //     ui.selectable_value(mode_mut, Mode::Monitor, "Monitor")
+                        //         .highlight();
+                        // });
                     });
                 });
             });

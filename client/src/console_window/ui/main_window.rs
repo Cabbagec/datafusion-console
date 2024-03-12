@@ -10,8 +10,8 @@ impl eframe::App for ConsoleApp {
             let connected = self.get_status().connected;
             // ui.add_enabled_ui(connected, |ui| {
             ui.add_enabled_ui(true, |ui| {
-                self.draw_side_panels_in_ui(ui);
-                self.draw_center_panels_in_ui(ui);
+                self.draw_side_panels_on_mode(ui);
+                self.draw_center_panel_on_mode_in_ui(ui);
             });
         });
     }

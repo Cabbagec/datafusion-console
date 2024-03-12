@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use egui::ahash::{HashSet, HashSetExt};
 use tokio::sync::Notify;
 
 use crate::RefCell;
@@ -9,14 +12,24 @@ pub struct VolatileStatus {
     pub mode: RefCell<Mode>,
     // server
     pub pause_server_yields: RefCell<bool>,
-    pub context_names: RefCell<Vec<String>>,
+    pub context_names: RefCell<HashSet<String>>,
     pub current_context_name: RefCell<Option<String>>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Mode {
     Monitor,
     Console,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Mode::Monitor => "Monitor".to_string(),
+            Mode::Console => "Console".to_string(),
+        };
+        write!(f, "{}", str)
+    }
 }
 
 impl Default for VolatileStatus {
@@ -28,7 +41,7 @@ impl Default for VolatileStatus {
             edit_ctx_name: RefCell::new("".to_string()),
             // server
             pause_server_yields: RefCell::new(false),
-            context_names: RefCell::new(vec![]),
+            context_names: RefCell::new(HashSet::new()),
             current_context_name: RefCell::new(None),
         }
     }
