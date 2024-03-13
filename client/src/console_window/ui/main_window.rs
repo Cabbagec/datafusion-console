@@ -2,16 +2,21 @@ use eframe::{Frame, Storage};
 use egui::Context;
 
 use crate::console_window::app::ConsoleApp;
+use crate::status::Mode;
 
 impl eframe::App for ConsoleApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         self.draw_top_menu_in_ctx(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             let connected = self.get_status().connected;
+            let mode = self.get_status().mode.borrow().clone();
             // ui.add_enabled_ui(connected, |ui| {
-            ui.add_enabled_ui(true, |ui| {
-                self.draw_side_panels_on_mode(ui);
-                self.draw_center_panel_on_mode_in_ui(ui);
+            ui.add_enabled_ui(true, |ui| match mode {
+                Mode::Console => {
+                    self.draw_console_side_panel_in_ui(ui);
+                    self.draw_console_center_panel_in_ui(ui);
+                }
+                Mode::Monitor => {}
             });
         });
     }

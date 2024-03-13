@@ -2,20 +2,11 @@ use egui::RichText;
 use log::info;
 
 use crate::custom_widgets;
-use crate::status::Mode;
 
 use super::ConsoleApp;
 
 impl ConsoleApp {
-    pub fn draw_side_panels_on_mode(&mut self, ui: &mut egui::Ui) {
-        let current_mode = self.get_status().mode.borrow().clone();
-        match current_mode {
-            Mode::Console => self.draw_side_panels_in_ui(ui),
-            Mode::Monitor => {}
-        }
-    }
-
-    fn draw_side_panels_in_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn draw_console_side_panel_in_ui(&mut self, ui: &mut egui::Ui) {
         egui::SidePanel::left("menu_panel")
             .resizable(false)
             .max_width(180.0)

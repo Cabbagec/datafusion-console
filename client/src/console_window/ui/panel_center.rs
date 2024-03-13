@@ -1,21 +1,11 @@
-use egui::{Button, Color32, RichText, Ui};
+use egui::{Button, Color32, Ui};
 use egui_extras::{Size, StripBuilder};
 use log::info;
-
-use crate::status::Mode;
 
 use super::ConsoleApp;
 
 impl ConsoleApp {
-    pub fn draw_center_panel_on_mode_in_ui(&mut self, ui: &mut Ui) {
-        let current_mode = self.get_status().mode.borrow().clone();
-        match current_mode {
-            Mode::Console => self.draw_console_in_ui(ui),
-            Mode::Monitor => {}
-        }
-    }
-
-    fn draw_console_in_ui(&mut self, ui: &mut Ui) {
+    pub fn draw_console_center_panel_in_ui(&mut self, ui: &mut Ui) {
         egui::CentralPanel::default().show_inside(ui, |ui| {
             StripBuilder::new(ui)
                 .size(Size::relative(0.1))
