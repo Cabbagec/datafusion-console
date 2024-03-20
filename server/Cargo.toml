@@ -15,6 +15,7 @@ parking_lot = "0.12"
 prost = "0.12.3"
 prost-types = "0.12.3"
 regex = "1"
+rust-embed = { version = "8.3.0", features = ["compression", "mime-guess", "include-exclude"] }
 tokio-tungstenite = "0.21"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
