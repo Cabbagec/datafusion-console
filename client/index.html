@@ -127,11 +127,11 @@
 <!-- Force refresh (Ctrl + F5) to load the latest files instead of cached files  -->
 <script>
     // We disable caching during development so that we always view the latest version.
-    if ('serviceWorker' in navigator && window.location.hash !== "#dev") {
-        window.addEventListener('load', function () {
-            navigator.serviceWorker.register('sw.js');
-        });
-    }
+    // if ('serviceWorker' in navigator && window.location.hash !== "#dev") {
+    //    window.addEventListener('load', function () {
+    //        navigator.serviceWorker.register('sw.js');
+    //    });
+    // }
     // window.addEventListener('load', (e) => {
     //     window.wasmBindings.set_current_url(window.location.host);
     // });

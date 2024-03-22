@@ -1,26 +1,22 @@
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use datafusion::execution::{
-    memory_pool::{FairSpillPool, GreedyMemoryPool},
-    runtime_env::{RuntimeConfig, RuntimeEnv},
-};
-use futures_util::stream::IntoAsyncRead;
-use futures_util::TryStreamExt;
+// use datafusion::execution::{
+//     memory_pool::{FairSpillPool, GreedyMemoryPool},
+//     runtime_env::{RuntimeConfig, RuntimeEnv},
+// };
 use regex;
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::{TcpListener, TcpStream},
+    io::{AsyncBufReadExt, BufReader},
+    net::TcpListener,
 };
-use tokio_tungstenite::{accept_async, WebSocketStream};
+use tokio_tungstenite::accept_async;
 use tracing::{debug, error, info};
 use tracing_subscriber::util::SubscriberInitExt;
 
+use assets::{GeneratedAssets, StaticAssets};
 use errors::AppErrors;
-use server::hello_service_handler;
-
-use crate::assets::{GeneratedAssets, StaticAssets};
+use server::{hello_service_handler, http_serve_file};
 
 mod assets;
 mod config;
@@ -34,15 +30,21 @@ pub async fn serve() -> Result<(), AppErrors> {
         .await
         .map_err(|e| format!("failed to bind to {bind}"))?;
     for f in GeneratedAssets::iter() {
-        info!("serving {f}");
+        debug!("serving generated asset: {f}");
     }
 
     for r in StaticAssets::iter() {
-        info!("serving {r}");
+        debug!("serving static asset: {r}");
     }
 
-    debug!("starting dashboard server on ws://{bind}");
+    info!("starting console/dashboard server on ws://{bind}");
     'outer: while let Ok((mut stream, _)) = bind_socket.accept().await {
+        let Ok(peer_addr) = stream.peer_addr() else {
+            error!("failed to get peer_addr");
+            continue
+        };
+
+        info!("client connected from: {peer_addr}");
         let mut peek_buf: [u8; 512] = [0; 512];
         let Ok(peek_size) = stream
             .peek(&mut peek_buf)
@@ -51,20 +53,15 @@ pub async fn serve() -> Result<(), AppErrors> {
             continue;
         };
         let peek = String::from_utf8_lossy(&peek_buf[..peek_size]);
-        debug!("peek: {peek}");
         if peek.contains("Upgrade: websocket") {
-            let Ok((ws, endpoint)) = handshake(stream).await else {
+            info!("ws client connected, proceed to handshake");
+            let Ok(ws) = accept_async(stream).await else {
                 error!("failed to handshake");
                 continue;
             };
-            tokio::spawn(hello_service_handler(ws, endpoint));
+            tokio::spawn(hello_service_handler(ws, peer_addr.clone()));
         } else {
-            // if peek.contains("\nUpgrade: ") {
-            //     error!("unsupported upgrade: {peek}");
-            //     continue;
-            // }
-
-            info!("proceed to serve static files");
+            info!("http client connected, proceed to serve static files");
             let buf_reader = BufReader::new(&mut stream);
             let mut req_lines = buf_reader.lines();
             let mut lines = vec![];
@@ -96,11 +93,10 @@ pub async fn serve() -> Result<(), AppErrors> {
                 error!("no request method and path found, request: {lines:?}");
                 continue
             };
-            debug!("path str: {path}");
             let path_buf = PathBuf::from(path);
+            debug!("peer: {peer_addr} requested: GET {path}");
             if path_buf == PathBuf::from("/") {
-                // serve index.html
-                if let Err(e) = serve_file("index.html", &mut stream).await {
+                if let Err(e) = http_serve_file("index.html", &mut stream).await {
                     error!("{e:?}");
                     continue;
                 };
@@ -110,65 +106,15 @@ pub async fn serve() -> Result<(), AppErrors> {
                     .unwrap_or(path_buf.as_path())
                     .to_str()
                     .unwrap_or("index.html");
-                if let Err(e) = serve_file(file_path, &mut stream).await {
+                if let Err(e) = http_serve_file(file_path, &mut stream).await {
                     error!("{e:?}");
                     continue;
                 };
             }
+            info!("finished serving, disconnecting client {peer_addr}");
         }
-        debug!("finished serving");
     }
     Ok(())
-}
-
-pub async fn serve_file(
-    rel_path: impl AsRef<str>,
-    stream: &mut TcpStream,
-) -> Result<(), AppErrors> {
-    let rel_path = rel_path.as_ref();
-    let header;
-    let file = if let Some(file) = GeneratedAssets::get(rel_path) {
-        let content_type = file.metadata.mimetype();
-        let content_length = file.data.len();
-        header = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n",
-            content_type, content_length
-        );
-        file
-    } else {
-        error!("failed to get asset: {rel_path}");
-        let f = StaticAssets::get("404.html").expect("failed to get 404.html");
-        header = format!(
-            "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n",
-            f.data.len()
-        );
-        f
-    };
-
-    stream
-        .write(header.as_bytes())
-        .await
-        .map_err(|e| format!("failed to write header: {e}"))?;
-    stream
-        .write_all(&file.data)
-        .await
-        .map_err(|e| format!("failed to write body: {e}"))?;
-    Ok(())
-}
-
-pub async fn handshake(
-    stream: TcpStream,
-) -> Result<(WebSocketStream<TcpStream>, SocketAddr), AppErrors> {
-    let peer_addr = if let Ok(peer) = stream.peer_addr() {
-        info!("new client from {}", peer);
-        peer
-    } else {
-        Err("failed to get peer addr from stream")?
-    };
-    let ws_stream = accept_async(stream)
-        .await
-        .map_err(|e| format!("failed to create ws stream, err: {e}"))?;
-    Ok((ws_stream, peer_addr))
 }
 
 #[tokio::main]
